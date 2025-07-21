@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Courier BOE PDF to Excel</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center min-h-screen">
+  <div class="bg-white/20 backdrop-blur-md p-8 rounded-xl shadow-xl w-96 text-center border border-white/30">
+    <h2 class="text-2xl font-bold text-white mb-6">PDF to Excel Converter</h2>
+
+    <!-- Select Options as Buttons -->
+    <div id="selectOptions" class="flex justify-center gap-4 mb-6">
+      <button type="button" id="optionCourier" class="select-btn bg-green-500 text-white font-semibold px-4 py-2 rounded-lg shadow transition">Courier</button>
+      <button type="button" id="optionBOE" class="select-btn bg-white text-gray-800 font-semibold px-4 py-2 rounded-lg shadow transition">BOE</button>
+      <button type="button" id="optionCargo" class="select-btn bg-white text-gray-800 font-semibold px-4 py-2 rounded-lg shadow transition">Cargo</button>
+    </div>
+
+    <input type="file" id="pdfFile" accept="application/pdf" class="hidden" />
+    <div id="fileTrigger"
+         class="cursor-pointer bg-white/30 text-white py-3 px-6 rounded-lg shadow-md hover:bg-white/50 transition border border-white/50">
+      📄 Choose PDF File
+    </div>
+
+    <ul id="fileNameDisplay" class="text-sm text-white mt-2 opacity-80 space-y-1">
+      <li>No file selected</li>
+    </ul>
+
+    <button id="uploadBtn"
+            class="mt-6 w-full bg-green-500 text-white py-3 px-6 rounded-lg shadow-lg hover:bg-green-600 transition">
+      📤 Convert & Download Excel
+    </button>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const fileInput = document.getElementById("pdfFile");
+      const fileTrigger = document.getElementById("fileTrigger");
+      const fileNameDisplay = document.getElementById("fileNameDisplay");
+      const uploadBtn = document.getElementById("uploadBtn");
+
+      // Option buttons
+      const optionCourier = document.getElementById("optionCourier");
+      const optionBOE = document.getElementById("optionBOE");
+      const optionCargo = document.getElementById("optionCargo");
+      const optionButtons = [optionCourier, optionBOE, optionCargo];
+
+      // Set initial selection
+      let selectedOption = "courier";
+
+      function updateOptionStyles(selected) {
+        optionButtons.forEach(btn => {
+          if (btn.id === selected) {
+            btn.classList.remove("bg-white", "text-gray-800");
+            btn.classList.add("bg-green-500", "text-white");
+          } else {
+            btn.classList.remove("bg-green-500", "text-white");
+            btn.classList.add("bg-white", "text-gray-800");
+          }
+        });
+      }
+
+      optionCourier.addEventListener("click", () => {
+        selectedOption = "courier";
+        updateOptionStyles("optionCourier");
+      });
+      optionBOE.addEventListener("click", () => {
+        selectedOption = "boe";
+        updateOptionStyles("optionBOE");
+      });
+      optionCargo.addEventListener("click", () => {
+        selectedOption = "cargo";
+        updateOptionStyles("optionCargo");
+      });
+
+      // Set initial style
+      updateOptionStyles("optionCourier");
+
+      fileTrigger.addEventListener("click", () => fileInput.click());
+
+      fileInput.addEventListener("change", () => {
+        if (fileInput.files.length === 0) {
+          fileNameDisplay.innerHTML = "<li>No file selected</li>";
+        } else {
+          fileNameDisplay.innerHTML = `<li>${fileInput.files[0].name}</li>`;
+        }
+      });
+
+      uploadBtn.addEventListener("click", async () => {
+        if (fileInput.files.length === 0) {
+          alert("Please select a PDF file.");
+          return;
+        }
+
+        if (selectedOption === "cargo") {
+          alert("Cargo conversion is not implemented yet.");
+          return;
+        }
+
+        const file = fileInput.files[0];
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("docType", selectedOption); // "courier" or "boe"
+
+        try {
+          const response = await fetch("/upload-pdf", {
+            method: "POST",
+            body: formData
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText);
+          }
+
+          const disposition = response.headers.get("Content-Disposition");
+          const match = disposition && disposition.match(/filename="?([^"]+)"?/);
+          const filename = match ? match[1] : "converted.xlsx";
+
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+        } catch (err) {
+          alert("Upload failed. See console for details.");
+          console.error(err);
+        }
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Upload PDFs & Download Excel</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center min-h-screen">
+
+  <div class="bg-white/20 backdrop-blur-md p-8 rounded-xl shadow-xl w-96 text-center border border-white/30">
+    <h2 class="text-2xl font-bold text-white mb-6">Filter & Extract PDF Data</h2>
+
+    <input type="file" id="pdfFiles" accept="application/pdf" class="hidden" />
+    <div id="fileTrigger"
+         class="cursor-pointer bg-white/30 text-white py-3 px-6 rounded-lg shadow-md hover:bg-white/50 transition border border-white/50">
+      📄 Choose a file
+    </div>
+
+    <ul id="fileNames" class="text-sm text-white mt-2 opacity-80 space-y-1">
+      <li>No files selected</li>
+    </ul>
+
+    <button id="uploadBtn"
+            class="mt-6 w-full bg-green-500 text-white py-3 px-6 rounded-lg shadow-lg hover:bg-green-600 transition">
+      📤 Filter & Download Excel
+    </button>
+
+    <p id="spinner" class="hidden text-white mt-4 animate-pulse">⏳ Processing, please wait...</p>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const fileInput = document.getElementById("pdfFiles");
+      const fileTrigger = document.getElementById("fileTrigger");
+      const fileNamesList = document.getElementById("fileNames");
+      const uploadBtn = document.getElementById("uploadBtn");
+      const spinner = document.getElementById("spinner");
+
+      fileTrigger.addEventListener("click", (e) => {
+        e.preventDefault();
+        fileInput.click();
+      });
+
+      fileInput.addEventListener("change", () => {
+        const files = fileInput.files;
+        fileNamesList.innerHTML = "";
+
+        if (files.length === 0) {
+          fileNamesList.innerHTML = "<li>No files selected</li>";
+          return;
+        }
+
+        if (files.length > 1) {
+          alert("Please select only one PDF file.");
+          fileInput.value = "";
+          fileNamesList.innerHTML = "<li>No files selected</li>";
+          return;
+        }
+
+        Array.from(files).forEach(file => {
+          const li = document.createElement("li");
+          li.textContent = file.name;
+          fileNamesList.appendChild(li);
+        });
+      });
+
+      uploadBtn.addEventListener("click", async () => {
+        if (!fileInput.files.length) {
+          alert("Please upload a PDF file.");
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+
+        spinner.classList.remove("hidden");
+
+        try {
+          const response = await fetch("/upload-boe", {
+            method: "POST",
+            body: formData,
+          });
+
+          spinner.classList.add("hidden");
+
+          if (!response.ok) {
+            throw new Error(`Error: ${response.statusText}`);
+          }
+
+          const disposition = response.headers.get("Content-Disposition");
+          const filenameMatch = /filename="?(.+)"?/.exec(disposition);
+          const filename = filenameMatch ? filenameMatch[1] : "output.xlsx";
+
+          const blob = await response.blob();
+          const downloadUrl = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = downloadUrl;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+        } catch (error) {
+          spinner.classList.add("hidden");
+          alert("Upload failed: " + error.message);
+        }
+      });
+    });
+  </script>
+</body>
+</html>
